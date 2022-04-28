@@ -8,22 +8,18 @@
 
 import pandas as pd
 
-
-# In[2]:
-
-
 pricipals_df = pd.read_csv("title.pricipals.tsv", sep="\t")
 pricipals_df
 
 
-# In[3]:
+# In[2]:
 
 
 basics_df = pd.read_csv("title.basics.tsv", sep="\t", low_memory=False)
 basics_df
 
 
-# In[4]:
+# In[3]:
 
 
 name_df = pd.read_csv("name.basics.tsv", sep="\t")
@@ -32,7 +28,7 @@ name_df
 
 # ## Data cleaning
 
-# In[5]:
+# In[4]:
 
 
 # Only keep category column is "actor"
@@ -42,7 +38,7 @@ pricipals_df = pricipals_df.drop(['ordering', 'category', 'job', 'characters'], 
 pricipals_df
 
 
-# In[6]:
+# In[5]:
 
 
 # drop titleType, originalTitle, isAdult, endYear, runtimeMinutes and genres columns
@@ -52,7 +48,7 @@ basics_df = basics_df[basics_df['startYear'] == '1990']
 basics_df
 
 
-# In[7]:
+# In[6]:
 
 
 # drop birthYear, deathYear, primaryProfession, and knownForTitles columns
@@ -60,7 +56,7 @@ name_df = name_df.drop(['birthYear', 'deathYear', 'primaryProfession', 'knownFor
 name_df
 
 
-# In[8]:
+# In[7]:
 
 
 # Merge the three tables
@@ -70,17 +66,18 @@ df = pd.merge(left=df,right=name_df,on='nconst')
 df.to_csv('hypergraph_data.csv',index = False)
 
 
-# In[9]:
+# In[8]:
 
 
 import pandas as pd
+
 df = pd.read_csv('hypergraph_data.csv')
 df
 
 
 # ## The COO representation
 
-# In[10]:
+# In[9]:
 
 
 import numpy as np
@@ -142,14 +139,38 @@ col = nconst
 data = np.array(weight)
 
 
-# ## Create the hypergraph
+# ## Create Hypergraph
 
-# In[11]:
+# In[10]:
 
 
 # Create the hypergraph 
 h = nwhy.NWHypergraph(row, col, data)
 print('Hypergraph created successfully!', h)
+
+
+# ## Visualize a part of the hypergraph through Hypernetx-Widget
+
+# In[11]:
+
+
+import imp
+import hypernetx as hnx
+
+N_hyperedges = int(input("Please enter the number of hyperedges that you want to form a part of the hypergraph: "))
+hyperedges = np.arange(N_hyperedges)
+scenes = dict()
+for hyperedge in hyperedges:
+    title = hyperedge_to_title_dic[hyperedge]
+    scenes[title] = []
+    vertices = h.edge_incidence(hyperedge)
+    for vertex in vertices:
+        name = vertex_to_name_dic[vertex]
+        scenes[title].append(name)
+    scenes[title] = tuple(scenes[title])
+    
+H = hnx.Hypergraph(scenes)
+hnx.draw(H)
 
 
 # ## NWHypergraph class methods:
@@ -331,10 +352,14 @@ desc_num_vertices_arr = sorted(num_vertices_arr, reverse = True)
 N_desc_num_vertices_arr = desc_num_vertices_arr[:N]
 print('Top #\tTV show/movie title\tthe number of actors\tactors\n')
 i = 1
+title_arr = []
+num_actor_arr = []
 for item in N_desc_num_vertices_arr:
     idx = num_vertices_arr.index(item)
     num_vertices_arr[idx] = -1
     title = hyperedge_to_title_dic[idx]
+    title_arr.append(title)
+    num_actor_arr.append(item)
     print('Top', i, '\t', title, '\t\t', item, end='\t')
     vertices = h.edge_incidence(idx)
     for vertex in vertices:
@@ -344,9 +369,25 @@ for item in N_desc_num_vertices_arr:
     i += 1
 
 
+# In[20]:
+
+
+import matplotlib.pyplot as plt
+x = title_arr
+y = num_actor_arr
+plt.figure(figsize=(16, 6))
+plt.bar(x, y, width=0.5)
+plt.xticks(fontsize=10, rotation=20)
+plt.yticks(fontsize=18)
+plt.ylabel(u'The number of actors', fontsize=20)
+diagram_title = str(N).join(['Diagram of Top ',' TV shows/movies with the most actors'])
+plt.title(diagram_title, fontsize=20)
+plt.show()
+
+
 # ### Query 8: Find the top N actors with the most appearance times
 
-# In[20]:
+# In[21]:
 
 
 N = int(input("Please enter the value of N: "))
@@ -355,10 +396,14 @@ desc_num_hyperedges_arr = sorted(num_hyperedges_arr, reverse = True)
 N_desc_num_hyperedges_arr = desc_num_hyperedges_arr[:N]
 print('Top #\tname\tthe number of TV shows/movies\tTV shows/movies\n')
 i = 1
+name_arr = []
+num_tv_movie_arr = []
 for item in N_desc_num_hyperedges_arr:
     idx = num_hyperedges_arr.index(item)
     num_hyperedges_arr[idx] = -1
     name = vertex_to_name_dic[idx]
+    name_arr.append(name)
+    num_tv_movie_arr.append(item)
     print('Top', i, '\t', name, '\t\t', item, end='\t')
     hyperedges = h.node_incidence(idx)
     for hyperedge in hyperedges:
@@ -371,9 +416,24 @@ for item in N_desc_num_hyperedges_arr:
     i += 1
 
 
+# In[22]:
+
+
+x = name_arr
+y = num_tv_movie_arr
+plt.figure(figsize=(16, 6))
+plt.bar(x, y, width=0.5)
+plt.xticks(fontsize=10, rotation=20)
+plt.yticks(fontsize=18)
+plt.ylabel(u'The apperance times', fontsize=20)
+diagram_title = str(N).join(['Diagram of Top ',' actors with the most appearance times'])
+plt.title(diagram_title, fontsize=20)
+plt.show()
+
+
 # ### Query 9: Find movies with only one actor in it, and that actor only acted in that movie.
 
-# In[21]:
+# In[23]:
 
 
 singleton_hyperedges = h.singletons()
@@ -392,8 +452,103 @@ for hyperedge in singleton_hyperedges:
     print(name)
 
 
-# In[ ]:
+# ## Create Slinegraph
+
+# In[24]:
 
 
+# Create the slinegraph
+s = h.s_linegraph(s=1, edges=True)
+print('Slinegraph created successfully! (s=1)', s)
 
 
+# ## Slinegraph class methods:
+
+# In[25]:
+
+
+# Slinegraph class methods:
+
+# print('-- get_singletons()')
+# equal_class = s.get_singletons()
+# print(equal_class)
+
+# print('-- s_connected_components()')
+# equal_class = s.s_connected_components()
+# print(equal_class)
+
+# print('-- is_s_connected()')
+# equal_class = s.is_s_connected()
+# print(equal_class)
+
+# print('-- s_distance(src, dest)')
+# equal_class = s.s_distance(src, dest)
+# print(equal_class)
+
+# print('-- s_diameter(src, dest)')
+# equal_class = s.s_diameter(src, dest)
+# print(equal_class)
+
+# print('-- s_path(src, dest)')
+# equal_class = s.s_path(src, dest)
+# print(equal_class)
+
+# print('-- s_betweenness_centrality(normalized=True)')
+# equal_class = s.s_betweenness_centrality(normalized=True)
+# print(equal_class)
+
+# print('-- s_closeness_centrality(v=None)')
+# equal_class = s.s_closeness_centrality(v=None)
+# print(equal_class)
+
+# print('-- s_harmonic_closeness_centrality(v=None)')
+# equal_class = s.s_harmonic_closeness_centrality(v=None)
+# print(equal_class)
+
+# print('-- s_eccentricity(v=None)')
+# equal_class = s.s_eccentricity(v=None)
+# print(equal_class)
+
+# print('-- s_neighbors(v)')
+# equal_class = s.s_neighbors(v)
+# print(equal_class)
+
+# print('-- s_degree(v)')
+# equal_class = s.s_degree(v)
+# print(equal_class)
+
+
+# ## S-line graphs construction
+
+# In[26]:
+
+
+s_line_graph_arr = h.s_linegraphs([1,2,3,4,5,6,7,8,9,10], edges=True)
+print(s_line_graph_arr)
+
+
+# ## Diagram of the relationship between S and S-linegraph size
+
+# In[27]:
+
+
+x_ticks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+x = np.arange(len(x_ticks))
+y = [891400, 539207, 119446, 34237, 7370, 1334, 334, 115, 42, 0]
+
+plt.figure(figsize=(13, 6))
+plt.plot(x, y, color='#FF0000', label='S-linegraph', linewidth=3.0)
+for a, b in zip(x, y):
+    plt.text(a, b, '%d'%b, ha='center', va= 'bottom', fontsize=18)
+    
+plt.xticks([r for r in x], x_ticks, fontsize=18, rotation=20)
+plt.yticks(fontsize=18)
+plt.xlabel(u'S', fontsize=18)
+plt.ylabel(u'S-linegraph size', fontsize=18)
+plt.title(u'Diagram of the relationship between S and S-linegraph size', fontsize=18)
+plt.legend(fontsize=18)
+
+plt.show()
+
+
+# #### S-linegraph size decreases sharply with increasing S
